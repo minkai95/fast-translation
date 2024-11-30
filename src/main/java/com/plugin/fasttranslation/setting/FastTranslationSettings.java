@@ -1,4 +1,4 @@
-package com.example.fasttranslation.setting;
+package com.plugin.fasttranslation.setting;
 
 
 import com.intellij.openapi.components.PersistentStateComponent;
@@ -16,7 +16,7 @@ import org.jetbrains.annotations.Nullable;
 @Service(Service.Level.APP) // 或者 Service.Level.PROJECT
 public final class FastTranslationSettings implements PersistentStateComponent<FastTranslationSettings> {
 
-    public String nativeLanguage = ""; // 一个简单的配置字段
+    public String nativeLanguage = "zh"; // 一个简单的配置字段
     public static FastTranslationSettings getInstance() {
         return ServiceManager.getService(FastTranslationSettings.class);
     }

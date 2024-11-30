@@ -1,6 +1,6 @@
-package com.example.fasttranslation.thirdparty;
+package com.plugin.fasttranslation.thirdparty;
 
-import com.example.fasttranslation.setting.FastTranslationSettings;
+import com.plugin.fasttranslation.setting.FastTranslationSettings;
 import com.tencentcloudapi.common.Credential;
 import com.tencentcloudapi.common.exception.TencentCloudSDKException;
 import com.tencentcloudapi.common.profile.ClientProfile;

@@ -1,4 +1,4 @@
-package com.example.fasttranslation.setting;
+package com.plugin.fasttranslation.setting;
 
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.ui.ComboBox;

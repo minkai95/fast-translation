@@ -1,7 +1,6 @@
-package com.example.fasttranslation.action;
+package com.plugin.fasttranslation.action;
 
-import com.example.fasttranslation.setting.FastTranslationSettings;
-import com.example.fasttranslation.thirdparty.RequestTencent;
+import com.plugin.fasttranslation.thirdparty.RequestTencent;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
@@ -76,8 +75,8 @@ public class CommandPAction extends AnAction {
     private void showNotification(Project project, String message) {
         // 创建并显示通知
         Notification notification = new Notification(
-                "com.example.fasttranslation",
-                "提示", // 通知的内容
+                "com.plugin.fasttranslation",
+                "Tips", // 通知的内容
                 message, // 弹出的提示内容
                 NotificationType.INFORMATION // 通知的类型
         );
