@@ -5,4 +5,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = "fast-translation"
+rootProject.name = "FastTranslation"

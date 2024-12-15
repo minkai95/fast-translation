@@ -17,6 +17,7 @@ import org.jetbrains.annotations.Nullable;
 public final class FastTranslationSettings implements PersistentStateComponent<FastTranslationSettings> {
 
     public String nativeLanguage = "zh"; // 一个简单的配置字段
+    public String afterTranslation = "replace"; // 一个简单的配置字段
     public static FastTranslationSettings getInstance() {
         return ServiceManager.getService(FastTranslationSettings.class);
     }
@@ -30,5 +31,6 @@ public final class FastTranslationSettings implements PersistentStateComponent<F
     @Override
     public void loadState(@NotNull FastTranslationSettings state) {
         this.nativeLanguage = state.nativeLanguage;
+        this.afterTranslation = state.afterTranslation;
     }
 }

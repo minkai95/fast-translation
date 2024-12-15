@@ -17,6 +17,7 @@ import java.util.Map;
 
 public class SettingsConfigurable implements Configurable {
     private ComboBox<String> languageComboBox;
+    private ComboBox<String> afterTranslationComboBox;
 
     // 映射语言名和语言代码
     private static final Map<String, String> LANGUAGE_MAP = new HashMap<>(){
@@ -30,10 +31,16 @@ public class SettingsConfigurable implements Configurable {
             put("Deutsch", "de");
         }
     };
+    private static final Map<String, String> AFTER_TRANSLATION_MAP = new HashMap<>(){
+        {
+            put("弹窗显示翻译内容", "popup");
+            put("替换选中文本", "replace");
+        }
+    };
 
     @Override
     public @Nls(capitalization = Nls.Capitalization.Title) String getDisplayName() {
-        return "Fast-Translation";
+        return "FastTranslation";
     }
 
     @Nullable
@@ -58,15 +65,28 @@ public class SettingsConfigurable implements Configurable {
         JComboBox<String> nativeLanguageComboBox = createLanguageComboBox();
         nativeLanguageComboBox.setMaximumSize(new Dimension(150, 30)); // 限制下拉框大小
         nativeLanguageComboBox.setPreferredSize(new Dimension(150, 30)); // 首选大小
-
         nativeLanguagePanel.add(nativeLanguageLabel);
         nativeLanguagePanel.add(nativeLanguageComboBox);
         nativeLanguagePanel.add(Box.createHorizontalGlue()); // 使控件靠左
+
+        // 第三行：Default after translation
+        JPanel afterTranslation = new JPanel();
+        afterTranslation.setLayout(new BoxLayout(afterTranslation, BoxLayout.X_AXIS));
+        JLabel afterTranslationLabel = new JLabel("Default After Translation: ");
+        JComboBox<String> afterTranslationComboBox = afterTranslationComboBox();
+        afterTranslationComboBox.setMaximumSize(new Dimension(150, 30)); // 限制下拉框大小
+        afterTranslationComboBox.setPreferredSize(new Dimension(150, 30)); // 首选大小
+
+        afterTranslation.add(afterTranslationLabel);
+        afterTranslation.add(afterTranslationComboBox);
+        afterTranslation.add(Box.createHorizontalGlue()); // 使控件靠左
 
         // 添加到主面板
         mainPanel.add(codingLanguagePanel);
         mainPanel.add(Box.createVerticalStrut(10)); // 添加垂直间距
         mainPanel.add(nativeLanguagePanel);
+        mainPanel.add(Box.createVerticalStrut(10)); // 添加垂直间距
+        mainPanel.add(afterTranslation);
 
         return mainPanel;
     }
@@ -91,17 +111,41 @@ public class SettingsConfigurable implements Configurable {
         return languageComboBox;
     }
 
+    // 创建下拉框的方法
+    private JComboBox<String> afterTranslationComboBox() {
+        afterTranslationComboBox = new ComboBox<>(AFTER_TRANSLATION_MAP.keySet().toArray(new String[0]));
+
+        // 加载当前配置
+        String currentAfterTranslation = FastTranslationSettings.getInstance().afterTranslation;
+        if (currentAfterTranslation == null || currentAfterTranslation.isEmpty()) {
+            currentAfterTranslation = "popup";
+        }
+
+        String finalCurrentAfterTranslation = currentAfterTranslation;
+        AFTER_TRANSLATION_MAP.forEach((name, code) -> {
+            if (code.equals(finalCurrentAfterTranslation)) {
+                afterTranslationComboBox.setSelectedItem(name);
+            }
+        });
+
+        return afterTranslationComboBox;
+    }
+
     @Override
     public boolean isModified() {
         // 检查是否有未保存的更改
         String selectedLanguageCode = LANGUAGE_MAP.get(languageComboBox.getSelectedItem());
-        return !selectedLanguageCode.equals(FastTranslationSettings.getInstance().nativeLanguage);
+        String selectedAfterTranslation = AFTER_TRANSLATION_MAP.get(afterTranslationComboBox.getSelectedItem());
+        return !selectedLanguageCode.equals(FastTranslationSettings.getInstance().nativeLanguage)
+                || !selectedAfterTranslation.equals(FastTranslationSettings.getInstance().afterTranslation);
     }
 
     @Override
     public void apply() {
         // 保存设置
         String selectedLanguageCode = LANGUAGE_MAP.get(languageComboBox.getSelectedItem());
+        String selectedAfterTranslation = AFTER_TRANSLATION_MAP.get(afterTranslationComboBox.getSelectedItem());
         FastTranslationSettings.getInstance().nativeLanguage = selectedLanguageCode;
+        FastTranslationSettings.getInstance().afterTranslation = selectedAfterTranslation;
     }
 }
