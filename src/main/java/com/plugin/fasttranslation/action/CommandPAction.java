@@ -19,6 +19,7 @@ import com.intellij.openapi.ui.popup.JBPopupFactory;
 import javax.swing.*;
 import java.awt.*;
 import com.intellij.openapi.ui.popup.JBPopup;
+import com.plugin.fasttranslation.util.I18nUtil;
 import kotlin.Pair;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -202,13 +203,13 @@ public class CommandPAction extends AnAction {
         
         JBPopup popup = JBPopupFactory.getInstance()
                 .createComponentPopupBuilder(panel, textArea)
-                .setTitle("Translation Result")
+                .setTitle(I18nUtil.getMessage("translate.result.pop.title"))
                 .setMovable(true)
                 .setRequestFocus(true)
                 .setResizable(true)
                 .setMinSize(new Dimension(200, 100))
                 .setCancelOnClickOutside(true)
-                .setCancelButton(new IconButton("Close", closeIcon, hoveredIcon))
+                .setCancelButton(new IconButton(I18nUtil.getMessage("translate.result.pop.close.tip"), closeIcon, hoveredIcon))
                 .createPopup();
 
         // 显示在编辑器的当前位置附近
