@@ -22,7 +22,7 @@ public class SettingsConfigurable implements Configurable {
 
     @Override
     public @Nls(capitalization = Nls.Capitalization.Title) String getDisplayName() {
-        return I18nUtil.getMessage("setting.title");
+        return I18nUtil.getMessage("setting.title", Locale.ENGLISH);
     }
 
     @Override

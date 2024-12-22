@@ -38,6 +38,21 @@ public class I18nUtil {
     }
 
     /**
+     * 获取指定语言的值
+     * @param key
+     * @param locale
+     * @return
+     */
+    public static String getMessage(String key, Locale locale) {
+        try {
+            ResourceBundle tempBundle = ResourceBundle.getBundle(BUNDLE_NAME, locale);
+            return tempBundle.getString(key);
+        } catch (MissingResourceException e) {
+            return '!' + key + '!';
+        }
+    }
+
+    /**
      * 根据key获取当前语言环境下的消息，支持参数替换
      * @param key 消息的键值
      * @param params 要替换的参数
