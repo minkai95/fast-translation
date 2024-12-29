@@ -8,8 +8,9 @@ import com.tencentcloudapi.common.profile.HttpProfile;
 import com.tencentcloudapi.tmt.v20180321.TmtClient;
 import com.tencentcloudapi.tmt.v20180321.models.LanguageDetectRequest;
 import com.tencentcloudapi.tmt.v20180321.models.LanguageDetectResponse;
-import com.tencentcloudapi.tmt.v20180321.models.TextTranslateRequest;
-import com.tencentcloudapi.tmt.v20180321.models.TextTranslateResponse;
+import com.tencentcloudapi.tmt.v20180321.models.TextTranslateBatchRequest;
+import com.tencentcloudapi.tmt.v20180321.models.TextTranslateBatchResponse;
+import java.util.Arrays;
 import kotlin.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,32 +37,67 @@ public class RequestTencent {
         client = new TmtClient(cred, "ap-beijing", clientProfile);
     }
 
-    public static Pair<Boolean, String> translate(String text) {
+    public static Pair<Boolean, String> translateBatch(String text) {
+        StringBuilder result = new StringBuilder();
+        String[] textArr = text.split("\n");
+        String[] paramArr = new String[textArr.length];
+        for (int i = 0; i < textArr.length; i++) {
+            paramArr[i] = textArr[i].trim();
+            for (char c : textArr[i].toCharArray()) {
+                if (c == ' ') {
+                    result.append(" ");
+                } else {
+                    break;
+                }
+            }
+            result.append("%s");
+        }
         Pair<Boolean, String> pair = languageDetect(text);
         if (!pair.getFirst()) {
             return pair;
         }
         String sourceLang = pair.getSecond();
+        Pair<Boolean, String[]> retPair = null;
         if ("en".equalsIgnoreCase(sourceLang)) {
-            return translate(text, "en", FastTranslationSettings.getInstance().nativeLanguage);
+            retPair = translateBatch(paramArr, "en", FastTranslationSettings.getInstance().nativeLanguage);
         }
-        return translate(text, "auto", "en");
+        if (retPair == null) {
+            retPair = translateBatch(paramArr, "auto", "en");
+        }
+        String retStr = result.toString();
+        if (retPair.getFirst()) {
+            for (int i = 0; i < retPair.getSecond().length; i++) {
+                retStr = retStr.replaceFirst("%s", retPair.getSecond()[i] + "\n");
+            }
+            return new Pair<>(true, retStr);
+        }
+        return new Pair<>(false, null);
     }
 
-    private static Pair<Boolean, String> translate(String text, String sourceLang, String targetLang) {
+    /**
+     * 文本批量翻译
+     * @param textArr
+     * @param sourceLang
+     * @param targetLang
+     * @return
+     */
+    private static Pair<Boolean, String[]> translateBatch(String[] textArr, String sourceLang, String targetLang) {
         try {
-            TextTranslateRequest req = new TextTranslateRequest();
-            req.setSourceText(text);
+            // 实例化一个请求对象,每个接口都会对应一个request对象
+            TextTranslateBatchRequest req = new TextTranslateBatchRequest();
             req.setSource(sourceLang);
             req.setTarget(targetLang);
             req.setProjectId(0L);
-            // 返回的resp是一个TextTranslateResponse的实例，与请求对象对应
-            TextTranslateResponse resp = client.TextTranslate(req);
-            return new Pair<>(true, resp.getTargetText());
+            req.setSourceTextList(textArr);
+            req.setTermRepoIDList(new String[]{"1c0e664bc5d811ef96a9ef92c8199dee"});
+            // 返回的resp是一个TextTranslateBatchResponse的实例，与请求对象对应
+            TextTranslateBatchResponse resp = client.TextTranslateBatch(req);
+            return new Pair<>(true, resp.getTargetTextList());
         } catch (TencentCloudSDKException e) {
-            LOGGER.warn("请求腾讯翻译失败,TextTranslate,text:{},sourceLang:{},targetLang:{}, msg:{}",
-                    text, sourceLang, targetLang, e.toString());
-            return new Pair<>(false, e.getMessage());
+            LOGGER.warn("请求腾讯翻译失败,TextTranslateBatch,textArr:{},sourceLang:{},targetLang:{}, msg:{}",
+                    Arrays.toString(textArr), sourceLang, targetLang, e.toString());
+            LOGGER.error("translateBatch", e);
+            return new Pair<>(false, null);
         }
     }
 

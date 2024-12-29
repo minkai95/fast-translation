@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.plugin"
-version = "1.2"
+version = "1.3"
 
 repositories {
     mavenCentral()
@@ -13,6 +13,7 @@ repositories {
 
 dependencies {
     implementation("com.tencentcloudapi:tencentcloud-sdk-java-tmt:3.1.1104")
+    implementation("com.thoughtworks.qdox:qdox:2.0.3")
 }
 
 // Configure Gradle IntelliJ Plugin

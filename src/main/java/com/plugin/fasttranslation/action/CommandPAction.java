@@ -16,10 +16,21 @@ import com.intellij.openapi.editor.FoldRegion;
 import com.intellij.openapi.editor.SelectionModel;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
-import javax.swing.*;
-import java.awt.*;
 import com.intellij.openapi.ui.popup.JBPopup;
 import com.plugin.fasttranslation.util.I18nUtil;
+import com.thoughtworks.qdox.JavaProjectBuilder;
+import com.thoughtworks.qdox.model.DocletTag;
+import com.thoughtworks.qdox.model.JavaClass;
+import com.thoughtworks.qdox.model.JavaMethod;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.util.List;
+import javax.swing.BorderFactory;
+import javax.swing.Icon;
+import javax.swing.JPanel;
+import javax.swing.JTextArea;
 import kotlin.Pair;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -27,8 +38,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.icons.AllIcons;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
+import java.io.StringReader;
 import com.intellij.util.IconUtil;
 
 public class CommandPAction extends AnAction {
@@ -75,15 +86,13 @@ public class CommandPAction extends AnAction {
                 showNotification(project, "Please select the translated text.");
                 return;
             }
-            selectedText = selectedText.trim();
-            selectedText = removeMultilineComment(selectedText);
-            selectedText = processLineBreak(selectedText);
+            selectedText = parseAndFormat(selectedText);
             if (selectedText.length() > 5000) {
                 showNotification(project, "Translation length cannot exceed 1000.");
                 return;
             }
             // 自定义逻辑：将选中文本转换
-            Pair<Boolean, String> transformedTextPair = RequestTencent.translate(selectedText);
+            Pair<Boolean, String> transformedTextPair = RequestTencent.translateBatch(selectedText);
             if (!transformedTextPair.getFirst()) {
                 showNotification(project, "Translation failed,please try again.");
                 return;
@@ -124,47 +133,6 @@ public class CommandPAction extends AnAction {
                 NotificationType.INFORMATION // 通知的类型
         );
         Notifications.Bus.notify(notification, project);
-    }
-
-    /**
-     * 去掉多行注释符号，保留注释内容
-     * @param input 输入字符串
-     * @return 去掉注释符号的内容
-     */
-    public static String removeMultilineComment(String input) {
-        // 匹配Java多行注释
-        String commentRegex = "/\\*\\*|/\\*|\\*/";
-        Pattern pattern = Pattern.compile(commentRegex);
-        Matcher matcher = pattern.matcher(input);
-
-        // 去除所有注释符号
-        String processed = matcher.replaceAll("");
-
-        // 去除每行开头的 '*' 符号
-        String[] lines = processed.split("\n");
-        StringBuilder result = new StringBuilder();
-        for (String line : lines) {
-            line = line.trim(); // 去掉行首和行尾的空格
-            if (line.startsWith("*")) {
-                line = line.substring(1).trim(); // 去掉每行开头的 '*' 符号
-            }
-            result.append(line).append("\n");
-        }
-
-        // 返回处理后的字符串，去掉末尾多余的换行符
-        return result.toString().trim();
-    }
-
-    /**
-     * 处理无效换行符
-     * @param input
-     * @return
-     */
-    public static String processLineBreak(String input) {
-        // Step 1: 去掉字符串中的不必要换行符
-        String noLineBreaks = input.replaceAll("[\\r\\n]+", " ");
-        // Step 2: 在标点符号后面添加换行符（匹配中英文标点符号）
-        return noLineBreaks.replaceAll("([。！？；：，、.,!?;:])", "$1\n");
     }
 
     /**
@@ -227,5 +195,155 @@ public class CommandPAction extends AnAction {
 
         // 显示在编辑器的当前位置附近
         popup.showInBestPositionFor(editor);
+    }
+
+    public static String parseAndFormat(String rawComment) {
+        if (rawComment == null || rawComment.trim().isEmpty()) {
+            return "";
+        }
+
+        // 预处理注释，移除开头的/**和结尾的*/
+        String processedComment = rawComment.trim()
+                .replaceAll("^/\\*\\*\\s*", "")
+                .replaceAll("\\s*\\*/$", "");
+
+        String mockClass = String.format(
+                "public class Mock {\n" +
+                        "    /**\n" +
+                        "%s\n" +
+                        "    */\n" +
+                        "    public void mockMethod() {}\n" +
+                        "}", processedComment);
+
+        JavaProjectBuilder builder = new JavaProjectBuilder();
+        try {
+            builder.addSource(new StringReader(mockClass));
+            JavaClass javaClass = builder.getClasses().iterator().next();
+            JavaMethod method = javaClass.getMethods().get(0);
+
+            StringBuilder formatted = new StringBuilder();
+
+            // 处理主要描述
+            String mainDescription = formatDescription(method.getComment());
+            if (!mainDescription.isEmpty()) {
+                formatted.append(mainDescription).append("\n");
+            }
+
+            // 处理@param标签
+            List<DocletTag> paramTags = method.getTagsByName("param");
+            if (!paramTags.isEmpty()) {
+                formatted.append("Params:\n");
+                for (DocletTag param : paramTags) {
+                    List<String> parameters = param.getParameters();
+                    if (!parameters.isEmpty()) {
+                        formatted.append("     ")
+                                .append(parameters.get(0))
+                                .append(" – ")
+                                .append(formatTagContent(param.getValue().replaceFirst("^" + parameters.get(0) + "\\s+", "")))
+                                .append("\n");
+                    }
+                }
+            }
+
+            // 处理@return标签
+            DocletTag returnTag = method.getTagByName("return");
+            if (returnTag != null) {
+                formatted.append("Returns:\n")
+                        .append("     ")
+                        .append(formatTagContent(returnTag.getValue()))
+                        .append("\n");
+            }
+
+            // 处理@throws标签
+            List<DocletTag> throwsTags = method.getTagsByName("throws");
+            if (!throwsTags.isEmpty()) {
+                formatted.append("Throws:\n");
+                for (DocletTag throwsTag : throwsTags) {
+                    List<String> parameters = throwsTag.getParameters();
+                    if (!parameters.isEmpty()) {
+                        String className = parameters.get(0);
+                        // 移除完整的包名，只保留类名
+                        className = className.substring(className.lastIndexOf('.') + 1);
+                        formatted.append("     ")
+                                .append(className)
+                                .append(" – ")
+                                .append(formatTagContent(throwsTag.getValue().replaceFirst("^" + parameters.get(0) + "\\s+", "")))
+                                .append("\n");
+                    }
+                }
+            }
+
+            // 处理@since标签
+            DocletTag sinceTag = method.getTagByName("since");
+            if (sinceTag != null) {
+                formatted.append("Since:\n")
+                        .append("     ")
+                        .append(formatTagContent(sinceTag.getValue()))
+                        .append("\n");
+            }
+
+            return formatted.toString().trim();
+        } catch (Exception e) {
+            return "Error parsing JavaDoc: " + e.getMessage();
+        }
+    }
+
+    private static String formatDescription(String text) {
+        if (text == null) return "";
+
+        // 移除每行开头的*和空格
+        text = text.replaceAll("(?m)^\\s*\\*\\s*", "");
+
+        // 处理HTML标签
+        text = text.replaceAll("<tt>|</tt>", "");
+        text = text.replaceAll("<pre>\\s*", "\n     ");
+        text = text.replaceAll("</pre>", "");
+        text = text.replaceAll("</?p>", "\n");
+        text = text.replaceAll("<cite>|</cite>", "");
+
+        // 处理链接
+        text = text.replaceAll("<a\\s+href=\"[^\"]*\">([^<]*)</a>", "$1");
+
+        // 处理特殊字符
+        text = text.replaceAll("&trade;", "™");
+
+        // 合并多行文本，保留必要的换行
+        String[] lines = text.split("\n");
+        StringBuilder result = new StringBuilder();
+        boolean inPreBlock = false;
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].trim();
+            if (line.isEmpty()) continue;
+
+            if (line.startsWith("     ")) {
+                // 这是预格式化的代码块
+                if (!inPreBlock) {
+                    result.append("\n");
+                    inPreBlock = true;
+                }
+                result.append(line).append("\n");
+            } else {
+                if (inPreBlock) {
+                    inPreBlock = false;
+                } else if (result.length() > 0) {
+                    result.append(" ");
+                }
+                result.append(line);
+            }
+        }
+
+        return result.toString().trim();
+    }
+
+    private static String formatTagContent(String text) {
+        if (text == null) return "";
+
+        // 移除HTML标签和特殊格式
+        text = text.replaceAll("<[^>]+>", "");
+        text = text.replaceAll("&trade;", "™");
+
+        // 合并多行为单行
+        return text.replaceAll("\\s+", " ").trim();
     }
 }
