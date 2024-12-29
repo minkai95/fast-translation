@@ -77,6 +77,7 @@ public class CommandPAction extends AnAction {
             }
             selectedText = selectedText.trim();
             selectedText = removeMultilineComment(selectedText);
+            selectedText = processLineBreak(selectedText);
             if (selectedText.length() > 5000) {
                 showNotification(project, "Translation length cannot exceed 1000.");
                 return;
@@ -152,6 +153,18 @@ public class CommandPAction extends AnAction {
 
         // 返回处理后的字符串，去掉末尾多余的换行符
         return result.toString().trim();
+    }
+
+    /**
+     * 处理无效换行符
+     * @param input
+     * @return
+     */
+    public static String processLineBreak(String input) {
+        // Step 1: 去掉字符串中的不必要换行符
+        String noLineBreaks = input.replaceAll("[\\r\\n]+", " ");
+        // Step 2: 在标点符号后面添加换行符（匹配中英文标点符号）
+        return noLineBreaks.replaceAll("([。！？；：，、.,!?;:])", "$1\n");
     }
 
     /**
